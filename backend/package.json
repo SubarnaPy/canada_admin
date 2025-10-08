@@ -8,18 +8,35 @@
     "dev": "nodemon server.js",
     "seed": "node scripts/seedAdmin.js",
     "list-users": "node scripts/listUsers.js",
-    "make-admin": "node scripts/makeAdmin.js"
+    "make-admin": "node scripts/makeAdmin.js",
+    "test": "echo \"No tests\" && exit 0"
   },
-  "keywords": ["express", "mongodb", "admin"],
-  "author": "",
+  "keywords": [
+    "express",
+    "mongodb",
+    "admin"
+  ],
+  "author": "Subarna Mondal",
   "license": "ISC",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/SubarnaPy/canada_admin.git"
+  },
+  "bugs": {
+    "url": "https://github.com/SubarnaPy/canada_admin/issues"
+  },
+  "homepage": "https://github.com/SubarnaPy/canada_admin#readme",
+  "engines": {
+    "node": ">=18"
+  },
   "dependencies": {
-    "express": "^4.18.2",
-    "mongoose": "^7.6.3",
     "bcryptjs": "^2.4.3",
-    "jsonwebtoken": "^9.0.2",
     "cors": "^2.8.5",
-    "dotenv": "^16.3.1"
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "jsonwebtoken": "^9.0.2",
+    "mongoose": "^7.6.3",
+    "stripe": "^19.1.0"
   },
   "devDependencies": {
     "nodemon": "^3.0.1"
