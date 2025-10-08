@@ -20,8 +20,18 @@ const app = express();
 
 // Middleware
 app.use(cors({
-  origin: ['http://localhost:3001', 'http://localhost:3000', 'http://localhost:5173', 'http://localhost:8081', 'http://localhost:8080'],
-  credentials: true
+  origin: [
+    'http://localhost:3001', 
+    'http://localhost:3000', 
+    'http://localhost:5173', 
+    'http://localhost:8081', 
+    'http://localhost:8080',
+    'https://thunderous-daifuku-d8654f.netlify.app',
+    process.env.FRONTEND_URL
+  ].filter(Boolean),
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
 }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
