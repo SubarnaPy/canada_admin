@@ -3,6 +3,16 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import {
   CheckCircle,
   Clock,
   XCircle,
@@ -11,7 +21,8 @@ import {
   User,
   RefreshCw,
   Filter,
-  MessageCircle
+  MessageCircle,
+  Loader2
 } from "lucide-react";
 import { toast } from "sonner";
 import { api } from "@/lib/api";
@@ -36,6 +47,10 @@ const Refunds = () => {
   const [refunds, setRefunds] = useState<Refund[]>([]);
   const [loading, setLoading] = useState(true);
   const [filterStatus, setFilterStatus] = useState<string>("all");
+  const [selectedRefund, setSelectedRefund] = useState<Refund | null>(null);
+  const [isRejectDialogOpen, setIsRejectDialogOpen] = useState(false);
+  const [rejectReason, setRejectReason] = useState("");
+  const [isProcessing, setIsProcessing] = useState(false);
 
   useEffect(() => {
     fetchRefunds();
@@ -56,14 +71,48 @@ const Refunds = () => {
 
   const updateRefundStatus = async (refundId: string, newStatus: string, notes?: string) => {
     try {
+      setIsProcessing(true);
       const response = await api.admin.refunds.updateStatus(refundId, newStatus, notes);
       if (response.success) {
-        toast.success(`Refund status updated to ${newStatus}`);
+        const statusMessage = newStatus === 'approved' 
+          ? 'Refund approved! Stripe refund has been initiated.'
+          : newStatus === 'rejected'
+          ? 'Refund request has been rejected.'
+          : `Refund status updated to ${newStatus}`;
+        toast.success(statusMessage);
         fetchRefunds();
       }
     } catch (error: any) {
       toast.error(error.message || "Error updating refund status");
+    } finally {
+      setIsProcessing(false);
     }
+  };
+
+  const handleApproveRefund = async (refund: Refund) => {
+    if (window.confirm(`Are you sure you want to approve this refund for $${(refund.amount / 100).toFixed(2)}? This will initiate a Stripe refund.`)) {
+      await updateRefundStatus(refund._id, 'approved');
+    }
+  };
+
+  const handleRejectRefund = (refund: Refund) => {
+    setSelectedRefund(refund);
+    setRejectReason("");
+    setIsRejectDialogOpen(true);
+  };
+
+  const submitRejection = async () => {
+    if (!selectedRefund) return;
+    
+    if (!rejectReason.trim()) {
+      toast.error("Please provide a reason for rejection");
+      return;
+    }
+
+    await updateRefundStatus(selectedRefund._id, 'rejected', rejectReason.trim());
+    setIsRejectDialogOpen(false);
+    setSelectedRefund(null);
+    setRejectReason("");
   };
 
   const getStatusBadgeVariant = (status: string) => {
@@ -307,24 +356,52 @@ const Refunds = () => {
                   <div className="flex gap-2 mt-4 pt-4 border-t border-gray-100">
                     <Button
                       size="sm"
-                      onClick={() => updateRefundStatus(refund._id, 'approved')}
+                      onClick={() => handleApproveRefund(refund)}
                       className="bg-green-600 hover:bg-green-700"
+                      disabled={isProcessing}
                     >
-                      <CheckCircle className="h-4 w-4 mr-1" />
-                      Approve Refund
+                      {isProcessing ? (
+                        <>
+                          <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                          Processing...
+                        </>
+                      ) : (
+                        <>
+                          <CheckCircle className="h-4 w-4 mr-1" />
+                          Approve & Refund
+                        </>
+                      )}
                     </Button>
                     <Button
                       size="sm"
                       variant="destructive"
-                      onClick={() => {
-                        const notes = prompt('Enter rejection reason (optional):');
-                        updateRefundStatus(refund._id, 'rejected', notes || undefined);
-                      }}
+                      onClick={() => handleRejectRefund(refund)}
                       className="bg-red-500 hover:bg-red-600"
+                      disabled={isProcessing}
                     >
                       <XCircle className="h-4 w-4 mr-1" />
-                      Reject Refund
+                      Reject Request
                     </Button>
+                  </div>
+                )}
+                
+                {/* Processing Status */}
+                {refund.status.toLowerCase() === 'processing' && (
+                  <div className="mt-4 pt-4 border-t border-gray-100">
+                    <div className="flex items-center gap-2 text-sm text-blue-600">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <span>Stripe refund is being processed...</span>
+                    </div>
+                  </div>
+                )}
+                
+                {/* Succeeded Status */}
+                {refund.status.toLowerCase() === 'succeeded' && (
+                  <div className="mt-4 pt-4 border-t border-gray-100">
+                    <div className="flex items-center gap-2 text-sm text-green-600">
+                      <CheckCircle className="h-4 w-4" />
+                      <span>Refund completed successfully via Stripe</span>
+                    </div>
                   </div>
                 )}
 
@@ -368,6 +445,71 @@ const Refunds = () => {
           </Card>
         )}
       </div>
+
+      {/* Reject Refund Dialog */}
+      <Dialog open={isRejectDialogOpen} onOpenChange={setIsRejectDialogOpen}>
+        <DialogContent className="sm:max-w-[500px] bg-white">
+          <DialogHeader>
+            <DialogTitle className="text-gray-900">Reject Refund Request</DialogTitle>
+            <DialogDescription className="text-gray-600">
+              Please provide a reason for rejecting this refund request. This will be visible to the customer.
+            </DialogDescription>
+          </DialogHeader>
+          {selectedRefund && (
+            <div className="space-y-4 py-4">
+              <div className="rounded-lg bg-gray-50 p-4 space-y-2 border border-gray-200">
+                <p className="font-semibold text-gray-900">{selectedRefund.serviceTitle}</p>
+                <p className="text-sm text-gray-600">
+                  Customer: {selectedRefund.userEmail}
+                </p>
+                <p className="text-sm text-gray-600">
+                  Amount: ${(selectedRefund.amount / 100).toFixed(2)} {selectedRefund.currency.toUpperCase()}
+                </p>
+                <p className="text-sm text-gray-600">
+                  Customer's Reason: "{selectedRefund.reason}"
+                </p>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="reject-reason" className="text-gray-900">
+                  Reason for Rejection *
+                </Label>
+                <Textarea
+                  id="reject-reason"
+                  placeholder="Explain why this refund request is being rejected..."
+                  value={rejectReason}
+                  onChange={(e) => setRejectReason(e.target.value)}
+                  rows={4}
+                  className="resize-none bg-white border-gray-300"
+                />
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setIsRejectDialogOpen(false)}
+              disabled={isProcessing}
+              className="border-gray-300 text-gray-700"
+            >
+              Cancel
+            </Button>
+            <Button 
+              onClick={submitRejection} 
+              disabled={isProcessing || !rejectReason.trim()}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              {isProcessing ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Rejecting...
+                </>
+              ) : (
+                "Reject Refund"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
