@@ -61,10 +61,13 @@ const Refunds = () => {
     try {
       const response = await api.admin.refunds.getAll();
       if (response.success) {
-        setRefunds(response.data || []);
+        // Backend returns response.data.refunds (nested)
+        const refundsData = response.data?.refunds || response.data || [];
+        setRefunds(Array.isArray(refundsData) ? refundsData : []);
       }
     } catch (error: any) {
       toast.error(error.message || "Error fetching refunds");
+      setRefunds([]); // Set empty array on error
     }
     setLoading(false);
   };

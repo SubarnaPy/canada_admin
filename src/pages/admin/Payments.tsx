@@ -44,10 +44,12 @@ const Payments = () => {
     try {
       const response = await api.admin.payments.getAll();
       if (response.success) {
-        setPayments(response.data || []);
+        const paymentsData = response.data || [];
+        setPayments(Array.isArray(paymentsData) ? paymentsData : []);
       }
     } catch (error: any) {
       toast.error(error.message || "Error fetching payments");
+      setPayments([]); // Set empty array on error
     }
     setLoading(false);
   };
