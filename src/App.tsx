@@ -7,6 +7,7 @@ import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import Auth from "./pages/Auth";
 import AdminLayout from "./components/AdminLayout";
+import { authHelpers } from "./lib/api";
 import Dashboard from "./pages/admin/Dashboard";
 import ManageServices from "./pages/admin/ManageServices";
 import Payments from "./pages/admin/Payments";
@@ -22,9 +23,14 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <Routes>
-          <Route path="/" element={<Index />} />
-          <Route path="/auth" element={<Auth />} />
-          <Route path="/admin" element={<AdminLayout />}>
+          {/* Show login page as the root for admin environment */}
+          <Route path="/" element={<Auth />} />
+          {/* Keep the public index available at /home */}
+          {/* <Route path="/home" element={<Index />} /> */}
+          <Route
+            path="/admin"
+            element={authHelpers.isAuthenticated() ? <AdminLayout /> : <Navigate to="/" replace />}
+          >
             <Route index element={<Navigate to="/admin/dashboard" replace />} />
             <Route path="dashboard" element={<Dashboard />} />
             <Route path="payments" element={<Payments />} />
